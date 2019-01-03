@@ -1,0 +1,3 @@
+/home/lyx/CLionProjects/233-language/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/lyx/CLionProjects/233-language/cmake-build-debug/CMakeFiles/233lang.dir
+/home/lyx/CLionProjects/233-language/cmake-build-debug/CMakeFiles/edit_cache.dir

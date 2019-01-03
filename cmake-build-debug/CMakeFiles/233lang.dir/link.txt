@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/233lang.dir/src/233_main.cc.o CMakeFiles/233lang.dir/src/233_parser.cc.o CMakeFiles/233lang.dir/src/233_scanner.cc.o CMakeFiles/233lang.dir/src/233_vm.cc.o CMakeFiles/233lang.dir/src/233_jit.cc.o  -o 233lang 

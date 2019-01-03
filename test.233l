@@ -1,0 +1,5 @@
+func init_ext()
+{
+    load_ext("swoole");
+}
+init_ext();
