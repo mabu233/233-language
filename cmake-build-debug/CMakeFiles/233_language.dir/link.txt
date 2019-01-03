@@ -1,1 +1,0 @@
-/usr/bin/c++  -g   CMakeFiles/233_language.dir/src/233_main.cc.o CMakeFiles/233_language.dir/src/233_scanner.cc.o  -o 233_language 
