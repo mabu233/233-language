@@ -16,7 +16,7 @@ namespace lang233
         E_FATAL,
     };
 
-    inline void error(enum error_type type, const std::string &msg,
+    static lang233_inline void error(enum error_type type, const std::string &msg,
                        const std::string &file, uint64_t offset, uint64_t line)
     {
         switch (type)

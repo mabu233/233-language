@@ -11,4 +11,6 @@
 #define ENUM_TO_STRING(x) switch (x)
 #define ENUM_TO_STRING_CASE(x) case x: return #x
 
+#define lang233_inline inline __attribute__((always_inline))
+
 #endif //INC_233_LANGUAGE_233_MACRO_H

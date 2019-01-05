@@ -15,6 +15,7 @@
 #include "233_type.h"
 #include "233_error.h"
 #include "233_macro.h"
+#include "233_opcode_handler.h"
 
 namespace lang233
 {
@@ -22,7 +23,7 @@ namespace lang233
     {
     public:
         static FuncTable func;
-        static VarTable vars;
+        static VarTable *vars;
     };
 }
 

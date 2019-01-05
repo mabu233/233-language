@@ -14,7 +14,7 @@ using namespace lang233;
 using namespace std;
 
 FuncTable Lang233G::func;
-VarTable Lang233G::vars;
+VarTable *Lang233G::vars = nullptr;
 
 LANG233_FUNC(load_ext)
 {
@@ -66,20 +66,20 @@ int main(int argc, char **argv)
     }
 
     Parser parser;
-    string root_func(file);
-    root_func.append("@main");
+    string root_func("@main");
     if (Lang233G::func.get(root_func))
     {
         error(E_FATAL, "root function " + root_func + " already exists.", file, 0, 0);
     }
 
     auto func = new Func(root_func);
+    Lang233G::func.insert(root_func, func);
+    Lang233G::vars = &func->vars;
     if (!parser.parse(scanner.t_vector, func, file))
     {
         exit(1);
     }
 
-    Lang233G::func.insert(root_func, func);
     VarArray root_arg;
     auto ret = VM::run(root_func, root_arg);
 

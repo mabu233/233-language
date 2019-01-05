@@ -36,13 +36,11 @@ Variable VM::run(const string &func_name, VarArray &args)
 
         for (int i = 0; i < arg_num; ++i)
         {
+            input_arg.emplace_back(func->args[i].name, func->args[i].val);
+
             if (i < input_arg_num)
             {
-                input_arg.emplace_back(func->args[i].name, args[i].val);
-            }
-            else
-            {
-                input_arg.emplace_back(func->args[i].name, func->args[i].val);
+                input_arg.back().val.set_val(args[i].val);
             }
         }
 
@@ -50,81 +48,72 @@ Variable VM::run(const string &func_name, VarArray &args)
         return return_value;
     }
 
-    auto var_num = func->vars.get_num();
+    auto var_num = func_name == "@main" ? 0 : func->vars.get_num(); // main function's variables are in global VarTable
 
-    auto stack_var_num = (1 + arg_num + var_num);
+    auto stack_var_num = (1 + arg_num + var_num + func->tmp_vars.get_num());
     auto stack_size = stack_var_num * sizeof(Variable);
     DEBUG_OUTPUT("stack_size: %ld", stack_size);
     auto stack_start = new Variable[stack_var_num];
-    auto stack_end = stack_start + stack_size;
     auto stack_curr = stack_start;
     DEBUG_OUTPUT("stack start: %p", stack_start);
 
-    VarTable vars;
+    VarTable local_vars;
+    VarScope vars{&local_vars, Lang233G::vars};
 
     for (int i = 0; i < arg_num; ++i)
     {
         stack_curr->name = func->args[i].name;
+        stack_curr->val.set_val(func->args[i].val);
 
         if (i < input_arg_num)
         {
             stack_curr->val.set_val(args[i].val);
         }
-        else
-        {
-            stack_curr->val.set_val(func->args[i].val);
-        }
 
-        vars.insert(stack_curr->name, stack_curr);
+        local_vars.insert(stack_curr);
+        ++stack_curr;
+    }
+
+    for (const auto &_t_var : func->tmp_vars.v_vector)
+    {
+        *stack_curr = *_t_var->second;
+        local_vars.insert(stack_curr);
+        ++stack_curr;
+    }
+
+    for (int i = 0; i < var_num; ++i)
+    {
+        *stack_curr = *func->vars.v_vector[i]->second;
+        local_vars.insert(stack_curr);
         ++stack_curr;
     }
 
     for (const auto &opcode : func->op_array)
     {
-        auto op1 = opcode.op1;
-        auto op2 = opcode.op2;
-        auto op1_val = op1.val;
-        auto op2_val = op2.val;
-
         switch (opcode.type)
         {
-            case OP_DECLARE_VAR:
-            {
-                auto name = *op1_val.val.string;
-                *stack_curr = *func->vars.get(name);
-                vars.insert(stack_curr->name, stack_curr);
-                DEBUG_OUTPUT("%s", ("declare var " + stack_curr->name).c_str());
-                ++stack_curr;
-                break;
-            }
-
             case OP_ASSIGN_VAR:
-            {
-                auto var = vars.get(*op1_val.val.string);
-                var->val.set_val(op2_val);
-                DEBUG_OUTPUT("%s", ("assign: var " + var->name + " = " + op2_val.to_string()).c_str());
+                OPCodeHandler::assign_var(opcode, vars);
                 break;
-            }
 
             case OP_CALL_FUNC:
-            {
-                DEBUG_OUTPUT("%s", ("run func " + *op1_val.val.string).c_str());
-                VarArray call_args;
-
-                if (op2_val.type == TYPE_FUNC_ARG)
-                {
-                    //TODO:support variable arg
-                    call_args = *op2_val.val.func_args;
-                }
-
-                run(*op1_val.val.string, call_args);
+                OPCodeHandler::call_func(opcode);
                 break;
-            }
+
+            case OP_ADD:
+                OPCodeHandler::add(opcode, vars);
+                break;
+
+            case OP_MUL:
+                OPCodeHandler::mul(opcode, vars);
+                break;
+
+            case OP_MOD:
+                break;
 
             default:
-            {
+                //TODO:fatal error
                 break;
-            }
         }
     }
 

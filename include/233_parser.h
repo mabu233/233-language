@@ -23,14 +23,16 @@ namespace lang233
     private:
         std::string file;
 
-        inline bool check_func_or_var_name(const std::string &name);
-        inline bool find(t_iterator &token, enum token_type t_type);
-        inline bool require_find(t_iterator &token, enum token_type t_type);
-        inline std::string get_quote_string(t_iterator &token, bool dquote = false);
+        lang233_inline bool check_func_or_var_name(const std::string &name);
+        lang233_inline bool find(t_iterator &token, enum token_type t_type);
+        lang233_inline bool require_find(t_iterator &token, enum token_type t_type);
+        lang233_inline std::string get_quote_string(t_iterator &token, bool dquote = false);
 
-        inline void func_declare_handler(t_iterator &token);
-        inline void var_declare_handler(t_iterator &token, Func *func);
-        inline void call_func_handler(t_iterator &token, const std::string &name, Func *func);
+        lang233_inline void func_declare_handler(t_iterator &token);
+        lang233_inline void var_declare_handler(t_iterator &token, Func *func);
+        lang233_inline void var_assign_handler(t_iterator &token, Func *func, bool require = true);
+        lang233_inline void call_func_handler(t_iterator &token, const std::string &name, Func *func);
+        lang233_inline OPNode parse_express(t_iterator &token, Func *func, std::string assign_var_name = "");
     };
 }
 

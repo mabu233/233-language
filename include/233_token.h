@@ -56,7 +56,7 @@ namespace lang233
         }
     };
 
-    inline std::string get_token_name(enum token_type t_type)
+    static lang233_inline std::string get_token_name(enum token_type t_type)
     {
         ENUM_TO_STRING(t_type)
         {

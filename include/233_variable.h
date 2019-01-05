@@ -31,7 +31,7 @@ namespace lang233
 
         Val() : type(TYPE_NONE)
         {
-
+            val.int64 = 0;
         }
 
         explicit Val(enum type _type) : type(_type)
@@ -52,18 +52,8 @@ namespace lang233
 
         Val(const Val &_val) : type(_val.type)
         {
-            if (_val.type == TYPE_STRING)
-            {
-                val.string = new std::string(*_val.val.string);
-            }
-            else if (_val.type == TYPE_FUNC_ARG)
-            {
-                val.func_args = new VarArray(*_val.val.func_args);
-            }
-            else
-            {
-                val = _val.val;
-            }
+            type = TYPE_NONE;
+            copy(_val);
         }
 
         ~Val()
@@ -71,14 +61,48 @@ namespace lang233
             if (type == TYPE_STRING)
             {
                 delete val.string;
+                val.string = nullptr;
             }
             else if (type == TYPE_FUNC_ARG)
             {
                 delete val.func_args;
+                val.func_args = nullptr;
             }
         }
 
-        inline void set_val(const std::string &_val, enum token_type _val_token_type = T_LITERAL)
+        Val &operator=(const Val &_val)
+        {
+            copy(_val);
+            return *this;
+        }
+
+        lang233_inline void set_val(int64_t _val)
+        {
+            switch (type)
+            {
+                case TYPE_INT:
+                    val.int64 = _val;
+                    break;
+
+                case TYPE_BOOL:
+                    val.boolean = _val != 0;
+                    break;
+
+                case TYPE_STRING:
+                    val.string->assign(std::to_string(_val));
+                    break;
+
+                case TYPE_NONE:
+                    type = TYPE_INT;
+                    val.int64 = _val;
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        lang233_inline void set_val(const std::string &_val, enum token_type _val_token_type = T_LITERAL)
         {
             switch (type)
             {
@@ -108,12 +132,15 @@ namespace lang233
                 case TYPE_FUNC_ARG:
                     break;
 
+                case TYPE_NONE:
+                    break;
+
                 default:
                     break;
             }
         }
 
-        inline void set_val(const VarArray &_val)
+        lang233_inline void set_val(const VarArray &_val)
         {
             if (likely(type == TYPE_FUNC_ARG))
             {
@@ -121,11 +148,36 @@ namespace lang233
             }
         }
 
-        inline void set_val(const Val &_val)
+        lang233_inline void set_val(const Val &_val)
         {
+            if (type == TYPE_NONE)
+            {
+                if (_val.type == TYPE_NONE)
+                {
+                    return;
+                }
+
+                copy(_val);
+                return;
+            }
+
             if (type != _val.type)
             {
-                set_val(_val.to_string(), _val.type == TYPE_BOOL ? T_BOOL : T_LITERAL);
+                if (type == TYPE_STRING)
+                {
+                    val.string->assign(_val.to_string());
+                }
+                else if (type == TYPE_INT)
+                {
+                    val.int64 = _val.to_int();
+                }
+                else if (type == TYPE_BOOL)
+                {
+                    val.boolean = _val.to_bool();
+                }
+
+                // can't convert TYPE_FUNC_ARG
+
                 return;
             }
 
@@ -143,7 +195,7 @@ namespace lang233
             }
         }
 
-        inline std::string to_string() const
+        lang233_inline std::string to_string() const
         {
             switch (type)
             {
@@ -158,6 +210,62 @@ namespace lang233
 
                 default:
                     return "";
+            }
+        }
+
+        lang233_inline int64_t to_int() const
+        {
+            switch (type)
+            {
+                case TYPE_STRING:
+                    return (int64_t) strtoll(val.string->c_str(), nullptr, 0);
+
+                case TYPE_INT:
+                    return val.int64;
+
+                case TYPE_BOOL:
+                    return val.boolean ? 1 : 0;
+
+                default:
+                    return 0;
+            }
+        }
+
+        lang233_inline bool to_bool() const
+        {
+            switch (type)
+            {
+                case TYPE_STRING:
+                    return !val.string->empty();
+
+                case TYPE_INT:
+                    return val.int64 != 0;
+
+                case TYPE_BOOL:
+                    return val.boolean;
+
+                default:
+                    return false;
+            }
+        }
+
+    private:
+        lang233_inline void copy(const Val &_val)
+        {
+            this->~Val();
+
+            type = _val.type;
+            if (_val.type == TYPE_STRING)
+            {
+                val.string = new std::string(*_val.val.string);
+            }
+            else if (_val.type == TYPE_FUNC_ARG)
+            {
+                val.func_args = new VarArray(*_val.val.func_args);
+            }
+            else
+            {
+                val = _val.val;
             }
         }
     };
@@ -190,7 +298,10 @@ namespace lang233
     class VarTable
     {
     public:
-        inline Variable *get(const std::string &var_name)
+        std::unordered_map<std::string, Variable*> variables;
+        std::vector<std::unordered_map<std::string, Variable*>::iterator> v_vector;
+
+        lang233_inline Variable *get(const std::string &var_name) const
         {
             auto iter = variables.find(var_name);
             if (iter == variables.end())
@@ -203,28 +314,33 @@ namespace lang233
             }
         }
 
-        inline bool insert(const std::string &var_name, Variable *var)
+        lang233_inline bool insert(Variable *var)
         {
+            const auto &var_name = var->name;
+
             auto iter = variables.find(var_name);
             if (iter != variables.end())
             {
                 return false;
             }
 
-            variables[var_name] = var;
-            ++num;
+            v_vector.push_back(variables.emplace(var_name, var).first);
             return true;
         }
 
-        inline size_t get_num()
+        lang233_inline void clear()
         {
-            return num;
+            variables.clear();
+            v_vector.clear();
         }
 
-    private:
-        size_t num = 0;
-        std::unordered_map<std::string, Variable*> variables;
+        lang233_inline size_t get_num()
+        {
+            return v_vector.size();
+        }
     };
+
+    typedef std::vector<VarTable*> VarScope;
 }
 
 #endif //INC_233_LANGUAGE_233_VARIABLE_H

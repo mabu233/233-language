@@ -7,58 +7,6 @@
 using namespace lang233;
 using namespace std;
 
-void Scanner::literal_handler()
-{
-    if (code[t_start] >= '0' && code[t_start] <= '9')
-    {
-        t_type = T_CONST_NUM;
-        return;
-    }
-
-    uint64_t len = offset - t_start;
-    switch (len)
-    {
-        case 6:
-            if (code.compare(t_start, len, "string") == 0)
-            {
-                t_type = T_TYPENAME;
-            }
-
-            break;
-        case 5:
-            if (code.compare(t_start, len, "false") == 0)
-            {
-                t_type = T_BOOL;
-            }
-
-            break;
-        case 4:
-            if (code.compare(t_start, len, "func") == 0)
-            {
-                t_type = T_FUNC;
-            }
-            else if (code.compare(t_start, len, "bool") == 0)
-            {
-                t_type = T_TYPENAME;
-            }
-            else if (code.compare(t_start, len, "true") == 0)
-            {
-                t_type = T_BOOL;
-            }
-
-            break;
-        case 3:
-            if (code.compare(t_start, len, "int") == 0)
-            {
-                t_type = T_TYPENAME;
-            }
-
-            break;
-        default:
-            break;
-    }
-}
-
 bool Scanner::scan(const string &scan_code, const string &file)
 {
     if (unlikely(!code.empty()))

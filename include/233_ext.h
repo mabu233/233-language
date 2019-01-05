@@ -61,7 +61,7 @@
     lang233::VarTable lang233_func_arg_table;\
     for (int i = 0; i < lang233_func_args.size(); ++i)\
     {\
-        lang233_func_arg_table.insert(lang233_func_args[i].name, &lang233_func_args[i]);\
+        lang233_func_arg_table.insert(&lang233_func_args[i]);\
     }
 
 #define LANG233_GET_ARG_BOOL(arg_name) \
@@ -73,7 +73,7 @@
 #define LANG233_GET_ARG_STRING(arg_name) \
         lang233_func_arg_table.get(#arg_name)->val.val.string
 
-inline void lang233_register_func(const std::string &func_name, lang233::lang233_func_t func, const lang233::VarArray &args)
+static lang233_inline void lang233_register_func(const std::string &func_name, lang233::lang233_func_t func, const lang233::VarArray &args)
 {
     auto ext_func = new lang233::Func(func_name, func);
     ext_func->args = args;

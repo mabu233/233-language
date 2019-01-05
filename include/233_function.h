@@ -32,23 +32,43 @@ namespace lang233
         OPArray op_array;
         VarArray args;
         VarTable vars;
+        VarTable tmp_vars;
         lang233_func_t pointer;
+        size_t tmp_var_id;
 
-        explicit Func(std::string f_name) : name(std::move(f_name)), type(FUNC_USER), pointer(nullptr)
+        explicit Func(std::string f_name)
+            : name(std::move(f_name)), type(FUNC_USER), pointer(nullptr), tmp_var_id(0)
         {
             DEBUG_OUTPUT("Create a function %s", name.c_str());
         }
 
-        Func(std::string f_name, lang233_func_t f_pointer) : name(std::move(f_name)), pointer(f_pointer), type(FUNC_INTERNAL)
+        Func(std::string f_name, lang233_func_t f_pointer)
+            : name(std::move(f_name)), pointer(f_pointer), type(FUNC_INTERNAL), tmp_var_id(0)
         {
 
+        }
+
+        lang233_inline size_t get_tmp_var_id()
+        {
+            return tmp_var_id++;
+        }
+
+        /**
+         * this function will insert a tmp variable to func->tmp_vars
+         */
+        lang233_inline std::string get_tmp_var_name()
+        {
+            auto name = "~" + std::to_string(get_tmp_var_id());
+            auto var = new Variable(name);
+            tmp_vars.insert(var);
+            return name;
         }
     };
 
     class FuncTable
     {
     public:
-        inline Func *get(const std::string &func_name)
+        lang233_inline Func *get(const std::string &func_name)
         {
             auto iter = functions.find(func_name);
             if (iter == functions.end())
@@ -61,7 +81,7 @@ namespace lang233
             }
         }
 
-        inline bool insert(const std::string &func_name, Func *func)
+        lang233_inline bool insert(const std::string &func_name, Func *func)
         {
             auto iter = functions.find(func_name);
             if (iter != functions.end())

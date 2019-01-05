@@ -1,5 +1,6 @@
 func init_ext()
 {
-    load_ext("swoole");
+    string a = 1 + 2 + 4;
+    load_ext();
 }
 init_ext();

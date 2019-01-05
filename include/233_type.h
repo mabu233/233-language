@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "233_macro.h"
+
 namespace lang233
 {
     enum type
@@ -19,7 +21,7 @@ namespace lang233
         TYPE_FUNC_ARG,
     };
 
-    inline enum type get_type(const std::string &type)
+    static lang233_inline enum type get_type(const std::string &type)
     {
         if (type == "int")
         {
