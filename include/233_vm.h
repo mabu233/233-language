@@ -8,19 +8,20 @@
 #include <string>
 
 #include "233_function.h"
+#include "233_error.h"
 
 namespace lang233
 {
     class VM
     {
     public:
-        static Variable run(const std::string &func, VarArray &args);
+        static Variable run(const std::string &func, VarArray &args, const OPCode &call_func_op);
 
-        static lang233_inline Variable *get_variable(const std::string &var, const VarScope &vars)
+        static lang233_inline Variable *get_variable(const std::string &var, const VarScope &vars, const OPCode &op)
         {
             if (unlikely(var.empty() || vars.empty()))
             {
-                printf("internal error in get_variable\n");
+                internal_error("get_variable error", __FILE__, __LINE__);
                 exit(1);
             }
 
@@ -33,7 +34,7 @@ namespace lang233
                 }
             }
 
-            printf("use undeclare variable %s\n", var.c_str());
+            error(E_FATAL, "use undeclare variable " + var, op.in_file, op.file_offset, op.file_lineno);
             exit(1);
         }
     };

@@ -1,6 +1,8 @@
-func init_ext()
+func mul10(x)
 {
-    string a = 1 + 2 + 4;
-    load_ext();
+    return x * 10;
 }
-init_ext();
+var a = 2;
+var c = 5;
+print(mul10(a) + c);
+var_dump(a);

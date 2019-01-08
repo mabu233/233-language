@@ -78,61 +78,28 @@ namespace lang233
 
         lang233_inline void set_val(int64_t _val)
         {
-            switch (type)
-            {
-                case TYPE_INT:
-                    val.int64 = _val;
-                    break;
-
-                case TYPE_BOOL:
-                    val.boolean = _val != 0;
-                    break;
-
-                case TYPE_STRING:
-                    val.string->assign(std::to_string(_val));
-                    break;
-
-                case TYPE_NONE:
-                    type = TYPE_INT;
-                    val.int64 = _val;
-                    break;
-
-                default:
-                    break;
-            }
+            this->~Val();
+            type = TYPE_INT;
+            val.int64 = _val;
         }
 
-        lang233_inline void set_val(const std::string &_val, enum token_type _val_token_type = T_LITERAL)
+        lang233_inline void set_val(const std::string &_val, enum type _type)
         {
-            switch (type)
+            this->~Val();
+            type = _type;
+
+            switch (_type)
             {
                 case TYPE_INT:
                     val.int64 = (int64_t) strtoll(_val.c_str(), nullptr, 0);
                     break;
 
                 case TYPE_BOOL:
-                    if (_val_token_type == T_BOOL)
-                    {
-                        val.boolean = _val == "true";
-                    }
-                    else if (_val_token_type == T_CONST_NUM)
-                    {
-                        val.boolean = _val != "0";
-                    }
-                    else
-                    {
-                        val.boolean = !_val.empty();
-                    }
+                    val.boolean = _val == "true";
                     break;
 
                 case TYPE_STRING:
-                    val.string->assign(_val);
-                    break;
-
-                case TYPE_FUNC_ARG:
-                    break;
-
-                case TYPE_NONE:
+                    val.string = new std::string(_val);
                     break;
 
                 default:
@@ -150,49 +117,7 @@ namespace lang233
 
         lang233_inline void set_val(const Val &_val)
         {
-            if (type == TYPE_NONE)
-            {
-                if (_val.type == TYPE_NONE)
-                {
-                    return;
-                }
-
-                copy(_val);
-                return;
-            }
-
-            if (type != _val.type)
-            {
-                if (type == TYPE_STRING)
-                {
-                    val.string->assign(_val.to_string());
-                }
-                else if (type == TYPE_INT)
-                {
-                    val.int64 = _val.to_int();
-                }
-                else if (type == TYPE_BOOL)
-                {
-                    val.boolean = _val.to_bool();
-                }
-
-                // can't convert TYPE_FUNC_ARG
-
-                return;
-            }
-
-            if (type == TYPE_STRING)
-            {
-                val.string->assign(*_val.val.string);
-            }
-            else if (type == TYPE_FUNC_ARG)
-            {
-                val.func_args->assign(_val.val.func_args->begin(), _val.val.func_args->end());
-            }
-            else
-            {
-                val = _val.val;
-            }
+            copy(_val);
         }
 
         lang233_inline std::string to_string() const

@@ -5,8 +5,8 @@
 #ifndef INC_233_LANGUAGE_233_TOKEN_H
 #define INC_233_LANGUAGE_233_TOKEN_H
 
-#include "233_macro.h"
 #include <vector>
+#include "233_macro.h"
 
 namespace lang233
 {
@@ -15,7 +15,7 @@ namespace lang233
         TOKEN_END = 0,
         T_WHITESPACE,
         T_LITERAL,
-        T_TYPENAME, // int, bool...
+        T_VAR, // var
         T_ASSIGN, // =
         T_EQUAL, // ==
         T_FUNC, // func
@@ -38,6 +38,7 @@ namespace lang233
         T_CONST_NUM, // 0-9
         T_BOOL, // true or false
         T_SLASH, // '\'
+        T_RETURN, // return
     };
 
     class Token
@@ -48,9 +49,10 @@ namespace lang233
         uint64_t start; // token start offset
         uint64_t length; // token text length
         uint64_t line; // file line number
+        std::string file;
 
-        Token(enum token_type t_type, std::string t_text, uint64_t t_start, uint64_t t_length, uint64_t t_line)
-                : type(t_type), text(std::move(t_text)), start(t_start), length(t_length), line(t_line)
+        Token(enum token_type t_type, std::string t_text, uint64_t t_start, uint64_t t_length, uint64_t t_line, std::string t_file)
+                : type(t_type), text(std::move(t_text)), start(t_start), length(t_length), line(t_line), file(move(t_file))
         {
 
         }
@@ -63,7 +65,7 @@ namespace lang233
             ENUM_TO_STRING_CASE(TOKEN_END);
             ENUM_TO_STRING_CASE(T_WHITESPACE);
             ENUM_TO_STRING_CASE(T_LITERAL);
-            ENUM_TO_STRING_CASE(T_TYPENAME);
+            ENUM_TO_STRING_CASE(T_VAR);
             ENUM_TO_STRING_CASE(T_ASSIGN);
             ENUM_TO_STRING_CASE(T_EQUAL);
             ENUM_TO_STRING_CASE(T_FUNC);
@@ -86,11 +88,13 @@ namespace lang233
             ENUM_TO_STRING_CASE(T_CONST_NUM);
             ENUM_TO_STRING_CASE(T_BOOL);
             ENUM_TO_STRING_CASE(T_SLASH);
+            ENUM_TO_STRING_CASE(T_RETURN);
             default: return "T_UNKNOWN";
         }
     }
 
     typedef std::vector<Token> TokenArray;
+    typedef TokenArray::const_iterator t_iterator;
 }
 
 #endif //INC_233_LANGUAGE_233_TOKEN_H

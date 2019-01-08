@@ -7,11 +7,11 @@
 using namespace lang233;
 using namespace std;
 
-bool Scanner::scan(const string &scan_code, const string &file)
+bool Scanner::scan(const string &scan_code, const string &_file)
 {
     if (unlikely(!code.empty()))
     {
-        error(E_WARNING, "A scanner can\'t scan two file at the same time.", file, 0, 0);
+        error(E_WARNING, "A scanner can\'t scan two file at the same time.", _file, 0, 0);
         return false;
     }
 
@@ -21,6 +21,7 @@ bool Scanner::scan(const string &scan_code, const string &file)
     t_type = T_WHITESPACE;
     t_vector.clear();
     code = scan_code;
+    file = _file;
     auto max_offset = code.length() - 1;
 
     for (const auto &c : code)
@@ -148,6 +149,7 @@ bool Scanner::scan(const string &scan_code, const string &file)
     }
 
     code = "";
-    t_vector.emplace_back(TOKEN_END, " ", offset, 1, t_line);
+    t_vector.emplace_back(TOKEN_END, " ", offset, 1, t_line, file);
+    file = "";
     return true;
 }

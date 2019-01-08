@@ -20,6 +20,7 @@ namespace lang233
 
     private:
         std::string code;
+        std::string file;
         uint64_t offset;
         uint64_t t_start;
         uint64_t t_line;
@@ -28,7 +29,7 @@ namespace lang233
         lang233_inline void emit()
         {
             uint64_t t_length = 1 + offset - t_start;
-            t_vector.emplace_back(t_type, code.substr(t_start, t_length), t_start, t_length, t_line);
+            t_vector.emplace_back(t_type, code.substr(t_start, t_length), t_start, t_length, t_line, file);
             t_start = 1 + offset;
         }
 
@@ -55,9 +56,9 @@ namespace lang233
             switch (len)
             {
                 case 6:
-                    if (code.compare(t_start, len, "string") == 0)
+                    if (code.compare(t_start, len, "return") == 0)
                     {
-                        t_type = T_TYPENAME;
+                        t_type = T_RETURN;
                     }
 
                     break;
@@ -73,10 +74,6 @@ namespace lang233
                     {
                         t_type = T_FUNC;
                     }
-                    else if (code.compare(t_start, len, "bool") == 0)
-                    {
-                        t_type = T_TYPENAME;
-                    }
                     else if (code.compare(t_start, len, "true") == 0)
                     {
                         t_type = T_BOOL;
@@ -84,9 +81,9 @@ namespace lang233
 
                     break;
                 case 3:
-                    if (code.compare(t_start, len, "int") == 0)
+                    if (code.compare(t_start, len, "var") == 0)
                     {
-                        t_type = T_TYPENAME;
+                        t_type = T_VAR;
                     }
 
                     break;

@@ -35,6 +35,12 @@ namespace lang233
             exit(1);
         }
     }
+
+    static lang233_inline void internal_error(const std::string &msg, const std::string &file, int line)
+    {
+        std::cout << "Internal error: " << msg << " in file " << file << ", line " << line << std::endl;
+        exit(1);
+    }
 }
 
 #endif //INC_233_LANGUAGE_233_ERROR_H

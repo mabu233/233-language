@@ -6,18 +6,21 @@
 #define INC_233_LANGUAGE_233_OPCODE_H
 
 #include "233_variable.h"
+#include "233_token.h"
 
 namespace lang233
 {
     enum opcode_type
     {
-        OP_ASSIGN_VAR = 0,
+        OP_NONE = 0,
+        OP_ASSIGN_VAR,
         OP_CALL_FUNC,
         OP_ADD,
         OP_SUB,
         OP_MUL,
         OP_DIV,
         OP_MOD,
+        OP_RETURN,
     };
 
     enum opnode_type
@@ -54,39 +57,55 @@ namespace lang233
         OPNode op1;
         OPNode op2;
         std::string return_var;
+        std::string in_file;
+        uint64_t file_offset;
+        uint64_t file_lineno;
 
-        OPCode(enum opcode_type _type, const OPNode &_op1, const OPNode &_op2) : type(_type), op1(_op1), op2(_op2)
+        OPCode(enum opcode_type _type, const OPNode &_op1, const OPNode &_op2, const t_iterator &_token)
+                : type(_type), op1(_op1), op2(_op2)
         {
-
+            in_file = _token->file;
+            file_offset = _token->start;
+            file_lineno = _token->line;
         }
 
-        OPCode(enum opcode_type _type, const OPNode &_op1, const OPNode &_op2, std::string _return_var)
+        OPCode(enum opcode_type _type, const OPNode &_op1, const OPNode &_op2, std::string _return_var, const t_iterator &_token)
                 : type(_type), op1(_op1), op2(_op2), return_var(std::move(_return_var))
         {
-
+            in_file = _token->file;
+            file_offset = _token->start;
+            file_lineno = _token->line;
         }
 
-        OPCode(enum opcode_type _type, const OPNode &_op1, const OPNode &_op2, size_t _tmp_var_id)
+        OPCode(enum opcode_type _type, const OPNode &_op1, const OPNode &_op2, size_t _tmp_var_id, const t_iterator &_token)
                 : type(_type), op1(_op1), op2(_op2), return_var(std::move("~" + std::to_string(_tmp_var_id)))
         {
-
+            in_file = _token->file;
+            file_offset = _token->start;
+            file_lineno = _token->line;
         }
 
-        OPCode(enum opcode_type _type, const OPNode &_op1) : type(_type), op1(_op1)
+        OPCode(enum opcode_type _type, const OPNode &_op1, const t_iterator &_token) : type(_type), op1(_op1)
         {
-
+            in_file = _token->file;
+            file_offset = _token->start;
+            file_lineno = _token->line;
         }
 
-        OPCode(enum opcode_type _type, const OPNode &_op1, std::string _return_var)
+        OPCode(enum opcode_type _type, const OPNode &_op1, std::string _return_var, const t_iterator &_token)
                 : type(_type), op1(_op1), return_var(std::move(_return_var))
         {
-
+            in_file = _token->file;
+            file_offset = _token->start;
+            file_lineno = _token->line;
         }
 
-        OPCode(enum opcode_type _type, const OPNode &_op1, size_t _tmp_var_id)
+        OPCode(enum opcode_type _type, const OPNode &_op1, size_t _tmp_var_id, const t_iterator &_token)
                 : type(_type), op1(_op1), return_var(std::move("~" + std::to_string(_tmp_var_id)))
         {
-
+            in_file = _token->file;
+            file_offset = _token->start;
+            file_lineno = _token->line;
         }
     };
     

@@ -7,9 +7,9 @@
 
 #ifdef LANG233_DEBUG
 #define DEBUG_OUTPUT(...) \
-printf("[DEBUG] File %s, line %d: ", __FILE__, __LINE__); \
-printf(__VA_ARGS__); \
-printf("\n")
+    printf("[DEBUG] File %s, line %d: ", __FILE__, __LINE__); \
+    printf(__VA_ARGS__); \
+    printf("\n")
 #else
 #define DEBUG_OUTPUT(...)
 #endif

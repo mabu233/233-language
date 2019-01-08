@@ -8,7 +8,7 @@
 #include <climits>
 #include <233_variable.h>
 
-#include "233_ext.h"
+#include "core/core.h"
 
 using namespace lang233;
 using namespace std;
@@ -18,10 +18,14 @@ VarTable *Lang233G::vars = nullptr;
 
 LANG233_FUNC(load_ext)
 {
-    LANG233_PARSE_ARG()
-    auto ext_name = LANG233_GET_ARG_STRING(ext_name);
-    if (ext_name->empty())
+    string *ext_name = nullptr;
+    LANG233_PARSE_ARG_BEGIN()
+        LANG233_GET_ARG_STRING(ext_name, ext_name);
+    LANG233_PARSE_ARG_END()
+
+    if (!ext_name)
     {
+        error(E_WARNING, "load_ext expect a variable", "", 0, 0);
         return;
     }
 
@@ -30,10 +34,11 @@ LANG233_FUNC(load_ext)
 
 int main(int argc, char **argv)
 {
-    LANG233_FUNC_ARGS(load_ext)
-    LANG233_FUNC_ARG_STRING(load_ext, ext_name)
+    lang233_core_init();
 
-    lang233_register_func(LANG233_GET_FUNC_EX(load_ext));
+    LANG233_FUNC_BEGIN()
+        LANG233_FUNC_ARG(ext_name);
+    LANG233_FUNC_END(load_ext)
 
     if (argc != 2)
     {
@@ -75,13 +80,19 @@ int main(int argc, char **argv)
     auto func = new Func(root_func);
     Lang233G::func.insert(root_func, func);
     Lang233G::vars = &func->vars;
-    if (!parser.parse(scanner.t_vector, func, file))
+    if (!parser.parse(scanner.t_vector, func))
     {
         exit(1);
     }
 
     VarArray root_arg;
-    auto ret = VM::run(root_func, root_arg);
+    Val op1_val;
+    op1_val.set_val(root_func, TYPE_STRING);
+    OPNode op1(OPNODE_IMM, op1_val);
+    Token call_func_token(T_LITERAL, root_func, 0, root_func.length(), 0, file);
+    TokenArray call_func_token_l{call_func_token};
+    OPCode call_func_op(OP_CALL_FUNC, op1, call_func_token_l.begin());
+    auto ret = VM::run(root_func, root_arg, call_func_op);
 
     return (int) ret.val.val.int64;
 }

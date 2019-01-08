@@ -39,8 +39,8 @@ lang233_inline string Parser::get_quote_string(t_iterator &token, bool dquote)
     {
         if (token->type == TOKEN_END)
         {
-            error(E_FATAL, "expect token " + get_token_name(type) + " but got " + get_token_name(TOKEN_END)
-                    , file, token->start, token->line);
+            error(E_FATAL, "expect " + get_token_name(type) + " but got " + get_token_name(TOKEN_END)
+                    , token->file, token->start, token->line);
         }
 
         if (token->type == T_SLASH)
@@ -92,7 +92,7 @@ lang233_inline bool Parser::require_find(t_iterator &token, enum token_type t_ty
     if (unlikely(!find(token, t_type)))
     {
         error(E_FATAL, "expect " + get_token_name(t_type) + " but got " + get_token_name(token->type)
-                , file, token->start, token->line);
+                , token->file, token->start, token->line);
     }
 
     return true;
@@ -103,54 +103,58 @@ lang233_inline void Parser::func_declare_handler(t_iterator &token)
     require_find(token, T_LITERAL);
     if (!check_func_or_var_name(token->text))
     {
-        error(E_FATAL, "function name only can use [a-zA-Z0-9_], but got " + token->text, file, token->start, token->line);
+        error(E_FATAL, "function name only can use [a-zA-Z0-9_], but got " + token->text, token->file, token->start, token->line);
     }
 
     auto func_name = token->text;
     auto func = new Func(func_name);
     require_find(token, T_LPARENTHESIS);
 
-    bool require_type = false;
-    while (token->type != T_RPARENTHESIS)
+    //TODO:arg name can't be same
+    while (find(token, T_LITERAL))
     {
-        //TODO:arg name can't be same
-        if ((require_type && require_find(token, T_TYPENAME)) || find(token, T_TYPENAME))
+        auto name = token->text;
+        Val val;
+
+        if (find(token, T_ASSIGN))
         {
-            require_type = false;
-            auto type = get_type(token->text);
-            require_find(token, T_LITERAL);
-            auto name = token->text;
-            Val val(type);
 
-            if (find(token, T_ASSIGN))
+            if (find(token, T_QUOTE))
             {
-
-                if (find(token, T_QUOTE))
-                {
-                    val.set_val(get_quote_string(token, false));
-                }
-                else if (token->type == T_DQUOTE)
-                {
-                    val.set_val(get_quote_string(token, true));
-                }
-                else if (token->type == T_CONST_NUM || token->type == T_BOOL)
-                {
-                    val.set_val(token->text, token->type);
-                }
-                else
-                {
-                    DEBUG_OUTPUT("unexpect token");
-                    error(E_FATAL, "unexpect token " + get_token_name(token->type), file, token->start, token->line);
-                }
+                val.set_val(get_quote_string(token, false), TYPE_STRING);
+            }
+            else if (token->type == T_DQUOTE)
+            {
+                val.set_val(get_quote_string(token, true), TYPE_STRING);
+            }
+            else if (token->type == T_CONST_NUM)
+            {
+                val.set_val(token->text, TYPE_INT);
+            }
+            else if (token->type == T_BOOL)
+            {
+                val.set_val(token->text, TYPE_BOOL);
+            }
+            else
+            {
+                error(E_FATAL, "unexpect " + get_token_name(token->type), token->file, token->start, token->line);
             }
 
-            func->args.emplace_back(name, val);
+            find(token, T_COMMA);
         }
 
-        if (token->type == T_COMMA)
+        func->args.emplace_back(name, val);
+
+        if (token->type != T_COMMA)
         {
-            require_type = true;
+            break;
         }
+    }
+
+    if (token->type != T_RPARENTHESIS)
+    {
+        error(E_FATAL, "expect " + get_token_name(T_RPARENTHESIS) + " but got " + get_token_name(token->type)
+                , token->file, token->start, token->line);
     }
 
     require_find(token, T_LBRACE);
@@ -183,12 +187,12 @@ lang233_inline void Parser::func_declare_handler(t_iterator &token)
     if (brace != 0)
     {
         error(E_FATAL, "expect " + get_token_name(T_RBRACE) + " but got " + get_token_name(token->type)
-                , file, token->start, token->line);
+                , token->file, token->start, token->line);
     }
 
     if (func_begin != token)
     {
-        parse(func_begin, token, func, "");
+        parse(func_begin, token, func, true);
     }
 
     Lang233G::func.insert(func_name, func);
@@ -198,59 +202,65 @@ lang233_inline void Parser::var_declare_handler(t_iterator &token, Func *func)
 {
     auto &op_array = func->op_array;
 
-    auto type = get_type(token->text);
     require_find(token, T_LITERAL);
     const auto &name = token->text;
     if (unlikely(!check_func_or_var_name(token->text)))
     {
-        error(E_FATAL, "variable name only can use [a-zA-Z0-9_], but got " + token->text, file, token->start, token->line);
+        error(E_FATAL, "variable name only can use [a-zA-Z0-9_], but got " + token->text, token->file, token->start, token->line);
     }
 
     for (const auto &arg : func->args)
     {
         if (unlikely(arg.name == name))
         {
-            error(E_FATAL, "variable name can't be same as function arg name", file, token->start, token->line);
+            error(E_FATAL, "variable name can't be same as function arg name", token->file, token->start, token->line);
         }
     }
 
-    Val val(type);
+    Val val;
     auto var = new Variable(name, val);
     if (!func->vars.insert(var))
     {
-        error(E_FATAL, "can\'t redeclare variable " + name, file, token->start, token->line);
+        error(E_FATAL, "can\'t redeclare variable " + name, token->file, token->start, token->line);
     }
 
-    var_assign_handler(token, func, false);
+    var_assign_handler(token, func, false, var);
 }
 
-lang233_inline void Parser::var_assign_handler(t_iterator &token, Func *func, bool require)
+lang233_inline void Parser::var_assign_handler(t_iterator &token, Func *func, bool not_in_declare, Variable *var)
 {
     const auto &name = token->text;
 
     if (unlikely(!func->vars.get(name) && !Lang233G::vars->get(name)))
     {
-        error(E_FATAL, "use undeclare variable " + name, file, token->start, token->line);
+        error(E_FATAL, "use undeclared variable " + name, token->file, token->start, token->line);
     }
 
-    if ((require && require_find(token, T_ASSIGN)) || find(token, T_ASSIGN))
+    if ((not_in_declare && require_find(token, T_ASSIGN)) || find(token, T_ASSIGN))
     {
         Val op_val(TYPE_STRING);
-        op_val.set_val(name);
+        op_val.set_val(name, TYPE_STRING);
         OPNode op1(OPNODE_VAR, op_val);
 
         find(token, T_LITERAL); // move to express
         auto op2 = parse_express(token, func, name);
         if (op2.type != OPNODE_NONE)
         {
-            func->op_array.emplace_back(OP_ASSIGN_VAR, op1, op2);
+            if (op2.type == OPNODE_IMM && !not_in_declare)
+            {
+                var->val.set_val(op2.val);
+            }
+            else
+            {
+                func->op_array.emplace_back(OP_ASSIGN_VAR, op1, op2, token);
+            }
         }
     }
 
     if (token->type != T_CODELINEEND)
     {
         error(E_FATAL, "expect " + get_token_name(T_CODELINEEND) + " but got " + get_token_name(token->type)
-                , file, token->start, token->line);
+                , token->file, token->start, token->line);
     }
 }
 
@@ -318,30 +328,26 @@ lang233_inline OPNode Parser::parse_express(t_iterator &token, Func *func, strin
 
             case T_CONST_NUM:
                 val.type = OPNODE_IMM;
-                val.val.type = TYPE_INT;
-                val.val.set_val(token->text);
+                val.val.set_val(token->text, TYPE_INT);
                 break;
 
             case T_BOOL:
                 val.type = OPNODE_IMM;
-                val.val.type = TYPE_BOOL;
-                val.val.set_val(token->text, T_BOOL);
+                val.val.set_val(token->text, TYPE_BOOL);
                 break;
 
             case T_LITERAL:
-                val.type = OPNODE_VAR;
+                val = get_variable_or_func_return(token, func);
                 break;
 
             case T_QUOTE:
                 val.type = OPNODE_IMM;
-                val.val.type = TYPE_STRING;
-                val.val.val.string = new string(get_quote_string(token, false));
+                val.val.set_val(get_quote_string(token, false), TYPE_STRING);
                 break;
 
             case T_DQUOTE:
                 val.type = OPNODE_IMM;
-                val.val.type = TYPE_STRING;
-                val.val.val.string = new string(get_quote_string(token, true));
+                val.val.set_val(get_quote_string(token, true), TYPE_STRING);
                 break;
 
             case T_WHITESPACE:
@@ -360,7 +366,7 @@ lang233_inline OPNode Parser::parse_express(t_iterator &token, Func *func, strin
 
         if (unlikely(priority == -1))
         {
-            error(E_FATAL, "internal error", file, token->start, token->line);
+            internal_error("priority = -1", __FILE__, __LINE__);
             continue;
         }
 
@@ -378,7 +384,7 @@ lang233_inline OPNode Parser::parse_express(t_iterator &token, Func *func, strin
                     auto top = operators.top();
                     if (unlikely(top.priority == -1))
                     {
-                        error(E_FATAL, "expect " + get_token_name(T_LPARENTHESIS), file, token->start, token->line);
+                        goto end_loop; // maybe in call func end
                     }
 
                     const auto &t = top.token;
@@ -442,7 +448,7 @@ lang233_inline OPNode Parser::parse_express(t_iterator &token, Func *func, strin
         {
             // operator
             auto end_iter = --rpn.begin();
-            enum opcode_type op_type;
+            enum opcode_type op_type = OP_NONE;
 
             switch (op->token->type)
             {
@@ -467,7 +473,7 @@ lang233_inline OPNode Parser::parse_express(t_iterator &token, Func *func, strin
                     break;
 
                 default:
-                    error(E_FATAL, "internal error", __FILE__, 0, __LINE__);
+                    internal_error("unknown operator " + get_token_name(op->token->type), __FILE__, __LINE__);
                     break;
             }
 
@@ -478,29 +484,69 @@ lang233_inline OPNode Parser::parse_express(t_iterator &token, Func *func, strin
 
             if (unlikely(operand2 == end_iter || operand1 == end_iter || operand2->type == 1 || operand1->type == 1))
             {
-                error(E_FATAL, "express parse error", file, token->start, token->line);
+                error(E_FATAL, "express parse error", token->file, token->start, token->line);
+            }
+
+            if (operand1->val.type == OPNODE_IMM && operand2->val.type == OPNODE_IMM)
+            {
+                VarTable _tmp_vars;
+                VarScope _tmp_var_scope{&_tmp_vars};
+                Variable _tmp_var("@tmp");
+                _tmp_vars.insert(&_tmp_var);
+
+                OPCode _tmp_opcode(op_type, operand1->val, operand2->val, _tmp_var.name, token);
+                switch (op_type)
+                {
+                    case OP_ADD:
+                        OPCodeHandler::add(_tmp_opcode, _tmp_var_scope);
+                        break;
+
+                    case OP_SUB:
+                        //TODO
+                        break;
+
+                    case OP_MUL:
+                        OPCodeHandler::mul(_tmp_opcode, _tmp_var_scope);
+                        break;
+
+                    case OP_DIV:
+                        break;
+
+                    case OP_MOD:
+                        break;
+
+                    default:
+                        internal_error("unknown opcode", __FILE__, __LINE__);
+                        break;
+                }
+
+                rpn.erase(operand2);
+                rpn.erase(operand1);
+                op->val.type = OPNODE_IMM;
+                op->val.val.set_val(_tmp_var.val);
+                op->type = 0;
+
+                continue;
             }
 
             if (op == --rpn.end())
             {
                 if (rpn.size() != 3)
                 {
-                    error(E_FATAL, "express parse error", file, token->start, token->line);
+                    error(E_FATAL, "express parse error", token->file, token->start, token->line);
                 }
 
                 if (assign_var_name.empty())
                 {
                     auto tmp_var = func->get_tmp_var_name();
-                    func->op_array.emplace_back(op_type, operand1->val, operand2->val, tmp_var);
+                    func->op_array.emplace_back(op_type, operand1->val, operand2->val, tmp_var, token);
                     operand2->val.type = OPNODE_VAR;
-                    operand2->val.val.~Val();
-                    operand2->val.val.type = TYPE_STRING;
-                    operand2->val.val.val.string = new string(move(tmp_var));
+                    operand2->val.val.set_val(tmp_var, TYPE_STRING);
                     return operand2->val;
                 }
                 else
                 {
-                    func->op_array.emplace_back(op_type, operand1->val, operand2->val, move(assign_var_name));
+                    func->op_array.emplace_back(op_type, operand1->val, operand2->val, move(assign_var_name), token);
                     OPNode r_op;
                     return r_op;
                 }
@@ -508,14 +554,12 @@ lang233_inline OPNode Parser::parse_express(t_iterator &token, Func *func, strin
             else
             {
                 auto tmp_var = func->get_tmp_var_name();
-                func->op_array.emplace_back(op_type, operand1->val, operand2->val, tmp_var);
-                rpn.erase(op);
+                func->op_array.emplace_back(op_type, operand1->val, operand2->val, tmp_var, token);
+                rpn.erase(operand2);
                 rpn.erase(operand1);
-                operand2->val.type = OPNODE_VAR;
-                operand2->val.val.~Val();
-                operand2->val.val.type = TYPE_STRING;
-                operand2->val.val.val.string = new string(move(tmp_var));
-                op = operand2;
+                op->val.type = OPNODE_VAR;
+                op->val.val.set_val(tmp_var, TYPE_STRING);
+                op->type = 0;
             }
         }
     }
@@ -523,66 +567,80 @@ lang233_inline OPNode Parser::parse_express(t_iterator &token, Func *func, strin
     auto op = rpn.begin();
     if (unlikely(rpn.size() != 1 || op->type != 0))
     {
-        error(E_FATAL, "express parse error", file, token->start, token->line);
+        error(E_FATAL, "express parse error", token->file, token->start, token->line);
     }
 
     return op->val;
 }
 
-lang233_inline void Parser::call_func_handler(t_iterator &token, const string &name, Func *func)
+lang233_inline OPNode Parser::get_variable_or_func_return(t_iterator &token, Func *func)
 {
-    //TODO:support arg
-    Val op1_val(TYPE_STRING);
-    op1_val.set_val(name);
+    const auto &name = token->text;
+
+    if (find(token, T_LPARENTHESIS))
+    {
+        // call_func
+        return call_func_handler(token, name, func);
+    }
+    else
+    {
+        --token;
+        Val val;
+        val.set_val(name, TYPE_STRING);
+        OPNode op(OPNODE_VAR, val);
+        return op;
+    }
+}
+
+lang233_inline OPNode Parser::call_func_handler(t_iterator &token, const string &name, Func *func, bool use_return)
+{
+    Val op1_val;
+    op1_val.set_val(name, TYPE_STRING);
     OPNode op1(OPNODE_IMM, op1_val);
 
     if (find(token, T_RPARENTHESIS))
     {
-        func->op_array.emplace_back(OP_CALL_FUNC, op1);
-        require_find(token, T_CODELINEEND);
-        return;
+        if (use_return)
+        {
+            auto tmp_var = func->get_tmp_var_name();
+            Val val;
+            val.set_val(tmp_var, TYPE_STRING);
+            OPNode r_op(OPNODE_VAR, val);
+            func->op_array.emplace_back(OP_CALL_FUNC, op1, move(tmp_var), token);
+            return r_op;
+        }
+        else
+        {
+            func->op_array.emplace_back(OP_CALL_FUNC, op1, token);
+            OPNode r_op;
+            return r_op;
+        }
     }
 
     Val op2_val(TYPE_FUNC_ARG);
 
     for (;;)
     {
-        //TODO:support express. func(1+2+3); add a 233_express.h to parse it.
         Val arg_val;
 
-        switch (token->type)
+        auto a = parse_express(token, func);
+        if (a.type == OPNODE_IMM)
         {
-            case T_BOOL:
-                arg_val.type = TYPE_BOOL;
-                arg_val.set_val(token->text);
-                break;
-
-            case T_CONST_NUM:
-                arg_val.type = TYPE_INT;
-                arg_val.set_val(token->text);
-                break;
-
-            case T_QUOTE:
-                arg_val.type = TYPE_STRING;
-                arg_val.val.string = new std::string(get_quote_string(token, false));
-                break;
-
-            case T_DQUOTE:
-                arg_val.type = TYPE_STRING;
-                arg_val.val.string = new std::string(get_quote_string(token, true));
-                break;
-
-            case T_LITERAL:
-                // call func or variable, it's a express. parse to more opcode.use temp variable.use type none and runtime get type.(in vm.cc)
-                break;
-
-            default:
-                goto end_loop;
-                break;
+            DEBUG_OUTPUT("func arg imm: %s", a.val.to_string().c_str());
+            arg_val.set_val(a.val);
+            op2_val.val.func_args->emplace_back(arg_val);
+        }
+        else if (a.type == OPNODE_VAR)
+        {
+            DEBUG_OUTPUT("func arg var: %s", a.val.val.string->c_str());
+            op2_val.val.func_args->emplace_back(*a.val.val.string, arg_val);
+        }
+        else
+        {
+            error(E_FATAL, "internal error", token->file, token->start, token->line);
         }
 
-        op2_val.val.func_args->emplace_back(arg_val);
-        if (!find(token, T_COMMA))
+        if (token->type != T_COMMA)
         {
             goto end_loop;
         }
@@ -590,7 +648,7 @@ lang233_inline void Parser::call_func_handler(t_iterator &token, const string &n
         if (find(token, T_RPARENTHESIS))
         {
             // ) after ,
-            error(E_FATAL, "unexpect token " + get_token_name(T_RPARENTHESIS), file, token->start, token->line);
+            error(E_FATAL, "unexpect " + get_token_name(T_RPARENTHESIS), token->file, token->start, token->line);
         }
     }
 
@@ -598,28 +656,29 @@ lang233_inline void Parser::call_func_handler(t_iterator &token, const string &n
     if (token->type != T_RPARENTHESIS)
     {
         error(E_FATAL, "expect " + get_token_name(T_RPARENTHESIS) + " but got " + get_token_name(token->type)
-                , file, token->start, token->line);
+                , token->file, token->start, token->line);
     }
-
-    require_find(token, T_CODELINEEND);
 
     OPNode op2(OPNODE_ARG, op2_val);
-    func->op_array.emplace_back(OP_CALL_FUNC, op1, op2);
+    if (use_return)
+    {
+        auto tmp_var = func->get_tmp_var_name();
+        Val val;
+        val.set_val(tmp_var, TYPE_STRING);
+        OPNode r_op(OPNODE_VAR, val);
+        func->op_array.emplace_back(OP_CALL_FUNC, op1, op2, move(tmp_var), token);
+        return r_op;
+    }
+    else
+    {
+        func->op_array.emplace_back(OP_CALL_FUNC, op1, op2, token);
+        OPNode r_op;
+        return r_op;
+    }
 }
 
-bool Parser::parse(t_iterator t, const t_iterator &end, Func *func, const string &p_file)
+bool Parser::parse(t_iterator t, const t_iterator &end, Func *func, bool in_function)
 {
-    if (!p_file.empty())
-    {
-        if (!file.empty())
-        {
-            error(E_WARNING, "A parser can\'t parse two file at the same time.", p_file, 0, 0);
-            return false;
-        }
-
-        file = p_file;
-    }
-
     while (t != end && t->type != TOKEN_END)
     {
         switch (t->type)
@@ -627,17 +686,17 @@ bool Parser::parse(t_iterator t, const t_iterator &end, Func *func, const string
             case T_FUNC:
             {
                 // new function
-                if (p_file.empty())
+                if (in_function)
                 {
                     // not in main function
-                    error(E_FATAL, "Can't declare function in other function", file, t->start, t->line);
+                    error(E_FATAL, "Can't declare function in other function", t->file, t->start, t->line);
                 }
 
                 func_declare_handler(t);
                 break;
             }
 
-            case T_TYPENAME:
+            case T_VAR:
             {
                 var_declare_handler(t, func);
                 break;
@@ -647,20 +706,50 @@ bool Parser::parse(t_iterator t, const t_iterator &end, Func *func, const string
             {
                 //TODO:support use arg like call_func(1, 2, 3);
                 auto name = t->text;
+
                 if (find(t, T_LPARENTHESIS))
                 {
                     // call_func()
-                    call_func_handler(t, name, func);
+                    call_func_handler(t, name, func, false);
+                    require_find(t, T_CODELINEEND);
                 }
                 else if (t->type == T_ASSIGN)
                 {
-                    // a = 1
+                    for (; t->type != T_LITERAL; --t)
+                    {
 
+                    }
+
+                    var_assign_handler(t, func);
                 }
                 else
                 {
 
                 }
+                break;
+            }
+
+            case T_RETURN:
+            {
+                if (find(t, T_CODELINEEND))
+                {
+                    OPNode return_value;
+                    func->op_array.emplace_back(OP_RETURN, return_value, t);
+                }
+                else
+                {
+                    auto return_value = parse_express(t, func);
+
+                    if (t->type != T_CODELINEEND)
+                    {
+                        error(E_FATAL,
+                              "expect " + get_token_name(T_CODELINEEND) + " but got " + get_token_name(t->type), t->file,
+                              t->start, t->line);
+                    }
+
+                    func->op_array.emplace_back(OP_RETURN, return_value, t);
+                }
+
                 break;
             }
 
@@ -674,7 +763,7 @@ bool Parser::parse(t_iterator t, const t_iterator &end, Func *func, const string
             default:
             {
                 DEBUG_OUTPUT("unexpect token");
-                error(E_FATAL, "unexpect token " + get_token_name(t->type), file, t->start, t->line);
+                error(E_FATAL, "unexpect " + get_token_name(t->type), t->file, t->start, t->line);
                 break;
             }
         }
@@ -682,15 +771,10 @@ bool Parser::parse(t_iterator t, const t_iterator &end, Func *func, const string
         ++t;
     }
 
-    if (!p_file.empty())
-    {
-        file = "";
-    }
-
     return true;
 }
 
-bool Parser::parse(const TokenArray &t_vector, Func *func, const string &p_file)
+bool Parser::parse(const TokenArray &t_vector, Func *func, bool in_function)
 {
-    return parse(t_vector.cbegin(), t_vector.cend(), func, p_file);
+    return parse(t_vector.cbegin(), t_vector.cend(), func, in_function);
 }

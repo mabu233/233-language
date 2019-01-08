@@ -11,67 +11,107 @@
 
 #define LANG233_FUNC_PREFIX lang233_func_
 #define LANG233_FUNC(func_name) extern "C" void LANG233_FUNC_PREFIX##func_name\
-    (VarArray &lang233_func_args, Variable *return_value)
-#define LANG233_GET_FUNC_ARGS(func_name) arginfo_##LANG233_FUNC_PREFIX##func_name
-#define LANG233_GET_FUNC(func_name) LANG233_FUNC_PREFIX##func_name, LANG233_GET_FUNC_ARGS(func_name)
-#define LANG233_GET_FUNC_EX(func_name) #func_name, LANG233_GET_FUNC(func_name)
+    (lang233::VarArray &lang233_func_args, lang233::Variable *return_value)
 
-#define LANG233_FUNC_ARGS(func_name) lang233::VarArray LANG233_GET_FUNC_ARGS(func_name);
-
-#define LANG233_FUNC_ARG_INT(func_name, arg_name) \
+#define LANG233_FUNC_BEGIN() \
     do {\
-        lang233::Val arg_val(lang233::TYPE_INT);\
-        LANG233_GET_FUNC_ARGS(func_name).emplace_back(#arg_name, arg_val);\
+        bool __optional = false;\
+        lang233::VarArray __args;
+
+#define LANG233_FUNC_END(func_name) \
+        lang233_register_func(#func_name, LANG233_FUNC_PREFIX##func_name, __args);\
     } while (0);
 
-#define LANG233_FUNC_ARG_STRING(func_name, arg_name) \
+#define LANG233_FUNC_ALIAS(func_name, alias) \
     do {\
-        lang233::Val arg_val(lang233::TYPE_STRING);\
-        LANG233_GET_FUNC_ARGS(func_name).emplace_back(#arg_name, arg_val);\
+        auto func = lang233::Lang233G::func.get(#func_name);\
+        lang233_register_func(#alias, LANG233_FUNC_PREFIX##func_name, func->args);\
+    } while (0)
+
+#define LANG233_FUNC_ARG_OPTIONAL() __optional = true
+
+#define LANG233_FUNC_ARG(arg_name) \
+    do {\
+        lang233::Val __arg_val;\
+        __args.emplace_back(#arg_name, __arg_val);\
+    } while (0)
+
+#define LANG233_PARSE_ARG_BEGIN() \
+    std::vector<std::string> __lang233_arg_string_tmp;\
+    do {\
+        lang233::VarTable lang233_func_arg_table;\
+        for (int i = 0; i < lang233_func_args.size(); ++i)\
+        {\
+            lang233_func_arg_table.insert(&lang233_func_args[i]);\
+        }
+
+#define LANG233_PARSE_ARG_END() \
     } while (0);
 
-#define LANG233_FUNC_ARG_BOOL(func_name, arg_name) \
-    do {\
-        lang233::Val arg_val(lang233::TYPE_BOOL);\
-        LANG233_GET_FUNC_ARGS(func_name).emplace_back(#arg_name, arg_val);\
-    } while (0);
-
-#define LANG233_FUNC_ARG_INT_EX(func_name, arg_name, default_value) \
-    do {\
-        lang233::Val arg_val(lang233::TYPE_INT);\
-        arg_val.val.int64 = default_value;\
-        LANG233_GET_FUNC_ARGS(func_name).emplace_back(#arg_name, arg_val);\
-    } while (0);
-
-#define LANG233_FUNC_ARG_STRING_EX(func_name, arg_name, default_value) \
-    do {\
-        lang233::Val arg_val(lang233::TYPE_STRING);\
-        arg_val.set_val(default_value);\
-        LANG233_GET_FUNC_ARGS(func_name).emplace_back(#arg_name, arg_val);\
-    } while (0);
-
-#define LANG233_FUNC_ARG_BOOL_EX(func_name, arg_name, default_value) \
-    do {\
-        lang233::Val arg_val(lang233::TYPE_BOOL);\
-        arg_val.val.boolean = default_value;\
-        LANG233_GET_FUNC_ARGS(func_name).emplace_back(#arg_name, arg_val);\
-    } while (0);
-
-#define LANG233_PARSE_ARG() \
-    lang233::VarTable lang233_func_arg_table;\
-    for (int i = 0; i < lang233_func_args.size(); ++i)\
-    {\
-        lang233_func_arg_table.insert(&lang233_func_args[i]);\
-    }
-
-#define LANG233_GET_ARG_BOOL(arg_name) \
-        lang233_func_arg_table.get(#arg_name)->val.val.boolean
+#define LANG233_GET_ARG_BOOL(arg_name, variable) \
+        do {\
+            auto __var = lang233_func_arg_table.get(#arg_name);\
+            if (!__var)\
+            {\
+                printf("Error, %s doesn't exist.\n", #arg_name);\
+                exit(1);\
+            }\
+            if (__var->val.type != TYPE_NONE)\
+            {\
+                variable = __var->val.to_bool();\
+            }\
+        } while (0)
 
 #define LANG233_GET_ARG_INT(arg_name) \
-        lang233_func_arg_table.get(#arg_name)->val.val.int64
+        do {\
+            auto __var = lang233_func_arg_table.get(#arg_name);\
+            if (!__var)\
+            {\
+                printf("Error, %s doesn't exist.\n", #arg_name);\
+                exit(1);\
+            }\
+            if (__var->val.type != TYPE_NONE)\
+            {\
+                variable = __var->val.to_int();\
+            }\
+        } while (0)
 
-#define LANG233_GET_ARG_STRING(arg_name) \
-        lang233_func_arg_table.get(#arg_name)->val.val.string
+#define LANG233_GET_ARG_STRING(arg_name, variable) \
+        do {\
+            auto __var = lang233_func_arg_table.get(#arg_name);\
+            if (!__var)\
+            {\
+                printf("Error, %s doesn't exist.\n", #arg_name);\
+                exit(1);\
+            }\
+            switch (__var->val.type)\
+            {\
+                case TYPE_STRING:\
+                    variable = __var->val.val.string;\
+                    break;\
+                case TYPE_INT:\
+                case TYPE_BOOL:\
+                    __lang233_arg_string_tmp.emplace_back(__var->val.to_string());\
+                    variable = &__lang233_arg_string_tmp.back();\
+                    break;\
+                default:\
+                    break;\
+            }\
+        } while (0)
+
+#define LANG233_GET_ARG(arg_name, variable) \
+        do {\
+            auto __var = lang233_func_arg_table.get(#arg_name);\
+            if (!__var)\
+            {\
+                printf("Error, %s doesn't exist.\n", #arg_name);\
+                exit(1);\
+            }\
+            if (__var->val.type != TYPE_NONE)\
+            {\
+                variable = __var;\
+            }\
+        } while (0)
 
 static lang233_inline void lang233_register_func(const std::string &func_name, lang233::lang233_func_t func, const lang233::VarArray &args)
 {
